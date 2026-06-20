@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 use crate::dataset::DatasetValidationReport;
+use crate::finetune;
 use crate::train::TrainConfig;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -22,10 +23,14 @@ pub struct TrainManifest {
 }
 
 impl TrainManifest {
-    pub fn from_config(config: &TrainConfig, dataset: DatasetValidationReport) -> Self {
+    pub fn from_config(
+        config: &TrainConfig,
+        k8s: &crate::config::K8sConfig,
+        dataset: DatasetValidationReport,
+    ) -> Self {
         Self {
             version: 1,
-            backend: if config.use_mlx { "mlx" } else { "mlx" }.into(),
+            backend: finetune::backend_label(config, k8s),
             model: config.model.clone(),
             data_path: config.data.display().to_string(),
             output_dir: config.output_dir.display().to_string(),

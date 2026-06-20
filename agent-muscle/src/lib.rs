@@ -1,7 +1,9 @@
 pub mod config;
 pub mod dataset;
 pub mod executor;
+pub mod finetune;
 pub mod jetstream_consumer;
+pub mod k8s;
 pub mod manifest;
 pub mod serve;
 pub mod spine;

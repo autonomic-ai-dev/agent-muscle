@@ -1,5 +1,7 @@
 use clap::{Parser, Subcommand};
 
+use agent_muscle::finetune::TrainBackend;
+
 #[derive(Parser)]
 #[command(name = "agent-muscle", about = "Remote actuator and command execution")]
 struct Cli {
@@ -13,15 +15,13 @@ enum Commands {
     Serve,
     /// Run a command and stream output
     Run {
-        /// Command to execute
         command: String,
-        /// Working directory
         #[arg(short, long)]
         cwd: Option<std::path::PathBuf>,
     },
     /// Show status
     Status,
-    /// Run local LoRA fine-tuning via MLX
+    /// Run LoRA fine-tuning (MLX, candle, or auto)
     Train {
         #[arg(long, default_value = "mlx-community/Llama-3.2-3B-Instruct-4bit")]
         model: String,
@@ -35,17 +35,48 @@ enum Commands {
         lora_rank: u32,
         #[arg(long, default_value = "./lora_adapters")]
         output: std::path::PathBuf,
+        #[arg(long, default_value = "auto")]
+        backend: String,
         #[arg(long, default_value_t = 1)]
         min_entries: u64,
         #[arg(long)]
         validate_only: bool,
     },
-    /// Validate JSONL training data without running MLX
+    /// Validate JSONL training data without running training
     Validate {
         #[arg(long, default_value = "./training_data")]
         data: std::path::PathBuf,
         #[arg(long, default_value_t = 1)]
         min_entries: u64,
+    },
+    /// Kubernetes GPU training operator
+    Operator {
+        #[command(subcommand)]
+        command: OperatorCommands,
+    },
+    /// Kubernetes GPU job helpers
+    K8s {
+        #[command(subcommand)]
+        command: K8sCommands,
+    },
+}
+
+#[derive(Subcommand)]
+enum OperatorCommands {
+    /// Run operator loop (scale GPU jobs from JetStream queue)
+    Run,
+    /// One-shot sync of GPU jobs from JetStream queue depth
+    Sync,
+    /// Show operator / queue status
+    Status,
+}
+
+#[derive(Subcommand)]
+enum K8sCommands {
+    /// Render a GPU training Job manifest to stdout
+    RenderJob {
+        #[arg(long)]
+        job_id: Option<String>,
     },
 }
 
@@ -78,6 +109,14 @@ async fn main() -> anyhow::Result<()> {
                 "  default dataset: {}",
                 agent_muscle::dataset::default_merged_dataset().display()
             );
+            println!(
+                "  train backend default: auto (device: {})",
+                agent_muscle::finetune::candle::device_summary()
+            );
+            println!(
+                "  k8s: enabled={} namespace={} gpus={}",
+                config.k8s.enabled, config.k8s.namespace, config.k8s.gpu_count
+            );
         }
         Commands::Train {
             model,
@@ -86,9 +125,11 @@ async fn main() -> anyhow::Result<()> {
             learning_rate,
             lora_rank,
             output,
+            backend,
             min_entries,
             validate_only,
         } => {
+            let config = agent_muscle::config::Config::load()?;
             let cfg = agent_muscle::train::TrainConfig {
                 model,
                 data,
@@ -96,11 +137,11 @@ async fn main() -> anyhow::Result<()> {
                 learning_rate,
                 lora_rank,
                 output_dir: output,
-                use_mlx: true,
+                backend: TrainBackend::parse(&backend)?,
                 min_entries,
                 validate_only,
             };
-            agent_muscle::train::run_training(&cfg)?;
+            agent_muscle::train::run_training(&cfg, &config.k8s)?;
         }
         Commands::Validate { data, min_entries } => {
             let report = agent_muscle::dataset::validate_dataset(&data, min_entries)?;
@@ -109,6 +150,41 @@ async fn main() -> anyhow::Result<()> {
                 std::process::exit(1);
             }
         }
+        Commands::Operator { command } => {
+            let config = agent_muscle::config::Config::load()?;
+            match command {
+                OperatorCommands::Run => {
+                    let url = config.nats.url.clone();
+                    let k8s = config.k8s.clone();
+                    let train = config.default_train_config();
+                    agent_muscle::k8s::operator::run_operator_loop(url, k8s, train).await?;
+                }
+                OperatorCommands::Sync => {
+                    let status = agent_muscle::k8s::operator::sync_gpu_jobs(
+                        &config.nats.url,
+                        &config.k8s,
+                        &config.default_train_config(),
+                    )
+                    .await?;
+                    println!("{}", serde_json::to_string_pretty(&status)?);
+                }
+                OperatorCommands::Status => {
+                    let status =
+                        agent_muscle::k8s::operator::operator_status(&config.nats.url, &config.k8s)
+                            .await?;
+                    println!("{}", serde_json::to_string_pretty(&status)?);
+                }
+            }
+        }
+        Commands::K8s { command } => match command {
+            K8sCommands::RenderJob { job_id } => {
+                let config = agent_muscle::config::Config::load()?;
+                let job_id = job_id.unwrap_or_else(|| uuid::Uuid::new_v4().simple().to_string());
+                let train = config.default_train_config();
+                let yaml = agent_muscle::k8s::render_train_job(&train, &config.k8s, &job_id)?;
+                print!("{yaml}");
+            }
+        },
     }
     Ok(())
 }

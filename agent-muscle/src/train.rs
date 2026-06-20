@@ -1,8 +1,12 @@
 use anyhow::Result;
 use std::path::PathBuf;
-use std::process::Command;
 
-#[derive(Debug)]
+use crate::config::K8sConfig;
+use crate::dataset::DatasetValidationReport;
+use crate::finetune::{self, TrainBackend};
+use crate::manifest::TrainManifest;
+
+#[derive(Debug, Clone)]
 pub struct TrainConfig {
     pub model: String,
     pub data: PathBuf,
@@ -10,7 +14,7 @@ pub struct TrainConfig {
     pub learning_rate: f64,
     pub lora_rank: u32,
     pub output_dir: PathBuf,
-    pub use_mlx: bool,
+    pub backend: TrainBackend,
     pub min_entries: u64,
     pub validate_only: bool,
 }
@@ -24,20 +28,18 @@ impl Default for TrainConfig {
             learning_rate: 1e-5,
             lora_rank: 16,
             output_dir: PathBuf::from("./lora_adapters"),
-            use_mlx: true,
+            backend: TrainBackend::Auto,
             min_entries: 1,
             validate_only: false,
         }
     }
 }
 
-pub fn validate_training_data(
-    config: &TrainConfig,
-) -> Result<crate::dataset::DatasetValidationReport> {
+pub fn validate_training_data(config: &TrainConfig) -> Result<DatasetValidationReport> {
     crate::dataset::validate_dataset(&config.data, config.min_entries)
 }
 
-pub fn run_training(config: &TrainConfig) -> Result<()> {
+pub fn run_training(config: &TrainConfig, k8s: &K8sConfig) -> Result<()> {
     let validation = validate_training_data(config)?;
     println!("{}", serde_json::to_string_pretty(&validation)?);
 
@@ -45,7 +47,7 @@ pub fn run_training(config: &TrainConfig) -> Result<()> {
         anyhow::bail!("dataset validation failed");
     }
 
-    let manifest = crate::manifest::TrainManifest::from_config(config, validation);
+    let manifest = TrainManifest::from_config(config, k8s, validation);
     let manifest_path = manifest.write(&config.output_dir)?;
     println!("  Manifest: {}", manifest_path.display());
 
@@ -53,80 +55,6 @@ pub fn run_training(config: &TrainConfig) -> Result<()> {
         println!("✅ Dataset validation passed (validate-only mode)");
         return Ok(());
     }
-    let python_check = Command::new("python3")
-        .arg("-c")
-        .arg("import mlx; print(mlx.__version__)")
-        .output();
 
-    match python_check {
-        Ok(output) if output.status.success() => {
-            let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            println!("✅ MLX available (version: {})", version);
-        }
-        _ => {
-            println!("⚠️  MLX not found. Attempting to install...");
-            let install = Command::new("pip3").args(["install", "mlx-lm"]).output()?;
-            if !install.status.success() {
-                let stderr = String::from_utf8_lossy(&install.stderr);
-                anyhow::bail!("Failed to install mlx-lm: {}", stderr);
-            }
-            println!("✅ MLX installed successfully");
-        }
-    }
-
-    std::fs::create_dir_all(&config.output_dir)?;
-
-    if !config.data.exists() {
-        anyhow::bail!(
-            "Training data directory not found: {}",
-            config.data.display()
-        );
-    }
-
-    println!();
-    println!("🚀 Starting LoRA fine-tuning...");
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("  Model:    {}", config.model);
-    println!("  Data:     {}", config.data.display());
-    println!("  Epochs:   {}", config.epochs);
-    println!("  LR:       {:.0e}", config.learning_rate);
-    println!("  LoRA rank: {}", config.lora_rank);
-    println!("  Output:   {}", config.output_dir.display());
-    println!();
-
-    let status = Command::new("mlx_lm.train")
-        .args([
-            "--model",
-            &config.model,
-            "--data",
-            &config.data.to_string_lossy(),
-            "--num-layers",
-            &config.lora_rank.to_string(),
-            "--iters",
-            &(config.epochs * 100).to_string(),
-            "--learning-rate",
-            &config.learning_rate.to_string(),
-            "--fine-tune-type",
-            "lora",
-            "--save-path",
-            &config.output_dir.to_string_lossy(),
-        ])
-        .status()?;
-
-    if status.success() {
-        println!();
-        println!("✅ Training complete!");
-        println!("  Adapters saved to: {}", config.output_dir.display());
-        println!();
-        println!("To use the fine-tuned model:");
-        println!(
-            "  mlx_lm.generate --model {} --adapter {}",
-            config.model,
-            config.output_dir.display()
-        );
-    } else {
-        anyhow::bail!("Training failed with exit code: {:?}", status.code());
-    }
-
-    Ok(())
+    finetune::run_backend_training(config, k8s)
 }

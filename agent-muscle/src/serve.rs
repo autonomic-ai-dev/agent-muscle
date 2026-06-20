@@ -7,7 +7,9 @@ use std::sync::Arc;
 
 use crate::config::Config;
 use crate::executor;
+use crate::finetune::TrainBackend;
 use crate::spine::SpineClient;
+use crate::train::TrainConfig;
 
 pub struct AppState {
     pub config: Config,
@@ -31,6 +33,8 @@ pub async fn start(config: Config) -> anyhow::Result<()> {
     let port = config.server.port;
     let nats_url = config.nats.url.clone();
     let jetstream_enabled = config.nats.jetstream_consumer;
+    let k8s = config.k8s.clone();
+    let train_defaults = config.default_train_config();
     let state = Arc::new(AppState { config, spine });
 
     if jetstream_enabled {
@@ -42,10 +46,23 @@ pub async fn start(config: Config) -> anyhow::Result<()> {
         });
     }
 
+    if k8s.enabled {
+        let url = nats_url;
+        tokio::spawn(async move {
+            if let Err(e) = crate::k8s::operator::run_operator_loop(url, k8s, train_defaults).await
+            {
+                tracing::error!(error = %e, "K8s operator loop stopped");
+            }
+        });
+    }
+
     let app = Router::new()
         .route("/health", get(health))
         .route("/execute", post(execute_command))
         .route("/train/validate", post(validate_train))
+        .route("/train/run", post(run_train))
+        .route("/k8s/status", get(k8s_status))
+        .route("/k8s/sync", post(k8s_sync))
         .with_state(state);
 
     let addr = format!("0.0.0.0:{}", port);
@@ -126,6 +143,91 @@ async fn validate_train(
                 .await;
             Json(serde_json::json!({ "ok": report.valid, "report": report }))
         }
+        Err(e) => Json(serde_json::json!({ "ok": false, "error": e.to_string() })),
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct RunTrainRequest {
+    #[serde(default)]
+    model: Option<String>,
+    #[serde(default)]
+    data: Option<String>,
+    #[serde(default)]
+    output: Option<String>,
+    #[serde(default)]
+    backend: Option<String>,
+    #[serde(default)]
+    validate_only: bool,
+}
+
+async fn run_train(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<RunTrainRequest>,
+) -> Json<serde_json::Value> {
+    let backend = req.backend.as_deref().map(TrainBackend::parse).transpose();
+    let backend = match backend {
+        Ok(b) => b.unwrap_or(TrainBackend::Auto),
+        Err(e) => return Json(serde_json::json!({ "ok": false, "error": e.to_string() })),
+    };
+
+    let cfg = TrainConfig {
+        model: req
+            .model
+            .clone()
+            .unwrap_or_else(|| state.config.train.model.clone()),
+        data: req
+            .data
+            .as_ref()
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::path::PathBuf::from(&state.config.train.data)),
+        output_dir: req
+            .output
+            .as_ref()
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::path::PathBuf::from(&state.config.train.output)),
+        backend,
+        validate_only: req.validate_only,
+        epochs: state.config.train.epochs,
+        learning_rate: state.config.train.learning_rate,
+        lora_rank: state.config.train.lora_rank,
+        min_entries: 1,
+    };
+
+    let event = serde_json::json!({
+        "backend": cfg.backend.as_str(),
+        "model": cfg.model,
+        "data": cfg.data.display().to_string(),
+    });
+
+    match tokio::task::spawn_blocking({
+        let k8s = state.config.k8s.clone();
+        move || crate::train::run_training(&cfg, &k8s)
+    })
+    .await
+    {
+        Ok(Ok(())) => {
+            let _ = state.spine.publish("muscle.train.started", &event).await;
+            Json(serde_json::json!({ "ok": true }))
+        }
+        Ok(Err(e)) => Json(serde_json::json!({ "ok": false, "error": e.to_string() })),
+        Err(e) => Json(serde_json::json!({ "ok": false, "error": e.to_string() })),
+    }
+}
+
+async fn k8s_status(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    match crate::k8s::operator::operator_status(&state.config.nats.url, &state.config.k8s).await {
+        Ok(status) => Json(serde_json::json!({ "ok": true, "operator": status })),
+        Err(e) => Json(serde_json::json!({ "ok": false, "error": e.to_string() })),
+    }
+}
+
+async fn k8s_sync(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    let train = state.config.default_train_config();
+    match crate::k8s::operator::sync_gpu_jobs(&state.config.nats.url, &state.config.k8s, &train)
+        .await
+    {
+        Ok(status) => Json(serde_json::json!({ "ok": true, "operator": status })),
         Err(e) => Json(serde_json::json!({ "ok": false, "error": e.to_string() })),
     }
 }
