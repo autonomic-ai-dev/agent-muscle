@@ -1,5 +1,12 @@
 # Changelog
 
+## [v] - 2026-06-20
+
+### Added
+- Added Mermaid charts to README
+- Added `--version` flag to CLI parser
+
+
 ## [Unreleased]
 
 ## [0.7.0] - 2026-06-20
