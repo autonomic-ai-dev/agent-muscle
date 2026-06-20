@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-20
+
+### Added
+
+- **MLX fine-tuning CLI** — `agent-muscle train` provides a 1-line interface for local LoRA training via MLX (Apple Silicon)
+- **Auto-install** — Automatically installs `mlx-lm` if not detected
+- **Configurable** — Supports `--model`, `--data`, `--epochs`, `--lr`, `--lora-rank`, `--output` flags
+
+### Changed
+
+- Version bumped from `0.2.0` to `0.3.0`
+
 ## [0.2.0] - 2026-06-20
 
 ### Added

@@ -21,6 +21,21 @@ enum Commands {
     },
     /// Show status
     Status,
+    /// Run local LoRA fine-tuning via MLX
+    Train {
+        #[arg(long, default_value = "mlx-community/Llama-3.2-3B-Instruct-4bit")]
+        model: String,
+        #[arg(long, default_value = "./training_data")]
+        data: std::path::PathBuf,
+        #[arg(long, default_value_t = 3)]
+        epochs: u32,
+        #[arg(long, default_value_t = 1e-5)]
+        learning_rate: f64,
+        #[arg(long, default_value_t = 16)]
+        lora_rank: u32,
+        #[arg(long, default_value = "./lora_adapters")]
+        output: std::path::PathBuf,
+    },
 }
 
 #[tokio::main]
@@ -45,6 +60,12 @@ async fn main() -> anyhow::Result<()> {
             println!("  config: {}", agent_muscle::config::Config::config_path().display());
             println!("  port: {}", config.server.port);
             println!("  spine: {}", config.spine.url);
+        }
+        Commands::Train { model, data, epochs, learning_rate, lora_rank, output } => {
+            let cfg = agent_muscle::train::TrainConfig {
+                model, data, epochs, learning_rate, lora_rank, output_dir: output, use_mlx: true,
+            };
+            agent_muscle::train::run_training(&cfg)?;
         }
     }
     Ok(())
