@@ -3,6 +3,7 @@ use clap::{Parser, Subcommand};
 use agent_muscle::finetune::TrainBackend;
 
 #[derive(Parser)]
+#[command(version)]
 #[command(name = "agent-muscle", about = "Remote actuator and command execution")]
 struct Cli {
     #[command(subcommand)]
