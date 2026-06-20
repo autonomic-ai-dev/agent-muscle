@@ -98,6 +98,7 @@ fn submit_k8s_gpu_job(config: &TrainConfig, k8s: &K8sConfig) -> Result<()> {
     Ok(())
 }
 
+#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
 fn run_local_candle_cuda(config: &TrainConfig) -> Result<()> {
     ensure_candle_python()?;
 
