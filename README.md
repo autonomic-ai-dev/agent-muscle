@@ -4,6 +4,14 @@
 
 `agent-muscle` runs shell commands locally or via NATS, validates training datasets, and orchestrates MLX / candle / K8s GPU training pipelines.
 
+```mermaid
+flowchart LR
+    Job[JetStream Compute Job] --> Muscle[agent-muscle]
+    Muscle --> Local[Local Execution]
+    Muscle --> K8s[K8s GPU Operator]
+    Muscle --> LoRA[LoRA Fine-Tuning]
+```
+
 Standalone: `agent-muscle run "cargo test"` · Integrated: JetStream consumer on `autonomic.compute.job`, spine events on execute/train.
 
 ---
