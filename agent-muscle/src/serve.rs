@@ -25,7 +25,18 @@ pub async fn start(config: Config) -> anyhow::Result<()> {
     });
 
     let port = config.server.port;
+    let nats_url = config.nats.url.clone();
+    let jetstream_enabled = config.nats.jetstream_consumer;
     let state = Arc::new(AppState { config, spine });
+
+    if jetstream_enabled {
+        let url = nats_url.clone();
+        tokio::spawn(async move {
+            if let Err(e) = crate::jetstream_consumer::run_compute_consumer(&url).await {
+                tracing::error!(error = %e, "JetStream compute consumer stopped");
+            }
+        });
+    }
 
     let app = Router::new()
         .route("/health", get(health))
