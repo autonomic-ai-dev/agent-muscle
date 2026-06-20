@@ -1,0 +1,3 @@
+[workspace]
+members = ["agent-muscle"]
+resolver = "2"
