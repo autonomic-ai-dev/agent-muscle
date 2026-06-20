@@ -32,16 +32,19 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Commands::Serve => {
-            println!("agent-muscle serve (not yet implemented)");
+            let config = agent_muscle::config::Config::load()?;
+            agent_muscle::serve::start(config).await?;
         }
         Commands::Run { command, cwd } => {
             let result = agent_muscle::executor::run_command(&command, cwd.as_deref()).await?;
             println!("{}", serde_json::to_string_pretty(&result)?);
         }
         Commands::Status => {
-            let _config = agent_muscle::config::Config::load()?;
+            let config = agent_muscle::config::Config::load()?;
             println!("agent-muscle status");
             println!("  config: {}", agent_muscle::config::Config::config_path().display());
+            println!("  port: {}", config.server.port);
+            println!("  spine: {}", config.spine.url);
         }
     }
     Ok(())
