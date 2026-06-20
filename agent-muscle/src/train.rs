@@ -11,6 +11,8 @@ pub struct TrainConfig {
     pub lora_rank: u32,
     pub output_dir: PathBuf,
     pub use_mlx: bool,
+    pub min_entries: u64,
+    pub validate_only: bool,
 }
 
 impl Default for TrainConfig {
@@ -23,11 +25,34 @@ impl Default for TrainConfig {
             lora_rank: 16,
             output_dir: PathBuf::from("./lora_adapters"),
             use_mlx: true,
+            min_entries: 1,
+            validate_only: false,
         }
     }
 }
 
+pub fn validate_training_data(
+    config: &TrainConfig,
+) -> Result<crate::dataset::DatasetValidationReport> {
+    crate::dataset::validate_dataset(&config.data, config.min_entries)
+}
+
 pub fn run_training(config: &TrainConfig) -> Result<()> {
+    let validation = validate_training_data(config)?;
+    println!("{}", serde_json::to_string_pretty(&validation)?);
+
+    if !validation.valid {
+        anyhow::bail!("dataset validation failed");
+    }
+
+    let manifest = crate::manifest::TrainManifest::from_config(config, validation);
+    let manifest_path = manifest.write(&config.output_dir)?;
+    println!("  Manifest: {}", manifest_path.display());
+
+    if config.validate_only {
+        println!("✅ Dataset validation passed (validate-only mode)");
+        return Ok(());
+    }
     let python_check = Command::new("python3")
         .arg("-c")
         .arg("import mlx; print(mlx.__version__)")
@@ -40,9 +65,7 @@ pub fn run_training(config: &TrainConfig) -> Result<()> {
         }
         _ => {
             println!("⚠️  MLX not found. Attempting to install...");
-            let install = Command::new("pip3")
-                .args(["install", "mlx-lm"])
-                .output()?;
+            let install = Command::new("pip3").args(["install", "mlx-lm"]).output()?;
             if !install.status.success() {
                 let stderr = String::from_utf8_lossy(&install.stderr);
                 anyhow::bail!("Failed to install mlx-lm: {}", stderr);
@@ -54,7 +77,10 @@ pub fn run_training(config: &TrainConfig) -> Result<()> {
     std::fs::create_dir_all(&config.output_dir)?;
 
     if !config.data.exists() {
-        anyhow::bail!("Training data directory not found: {}", config.data.display());
+        anyhow::bail!(
+            "Training data directory not found: {}",
+            config.data.display()
+        );
     }
 
     println!();
@@ -70,13 +96,20 @@ pub fn run_training(config: &TrainConfig) -> Result<()> {
 
     let status = Command::new("mlx_lm.train")
         .args([
-            "--model", &config.model,
-            "--data", &config.data.to_string_lossy(),
-            "--num-layers", &config.lora_rank.to_string(),
-            "--iters", &(config.epochs * 100).to_string(),
-            "--learning-rate", &config.learning_rate.to_string(),
-            "--fine-tune-type", "lora",
-            "--save-path", &config.output_dir.to_string_lossy(),
+            "--model",
+            &config.model,
+            "--data",
+            &config.data.to_string_lossy(),
+            "--num-layers",
+            &config.lora_rank.to_string(),
+            "--iters",
+            &(config.epochs * 100).to_string(),
+            "--learning-rate",
+            &config.learning_rate.to_string(),
+            "--fine-tune-type",
+            "lora",
+            "--save-path",
+            &config.output_dir.to_string_lossy(),
         ])
         .status()?;
 
@@ -86,7 +119,11 @@ pub fn run_training(config: &TrainConfig) -> Result<()> {
         println!("  Adapters saved to: {}", config.output_dir.display());
         println!();
         println!("To use the fine-tuned model:");
-        println!("  mlx_lm.generate --model {} --adapter {}", config.model, config.output_dir.display());
+        println!(
+            "  mlx_lm.generate --model {} --adapter {}",
+            config.model,
+            config.output_dir.display()
+        );
     } else {
         anyhow::bail!("Training failed with exit code: {:?}", status.code());
     }

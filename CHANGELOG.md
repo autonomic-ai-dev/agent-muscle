@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-06-20
+
+### Added
+
+- **Dataset validation gate** — `agent-muscle validate` and `train --validate-only` check JSONL before MLX
+- **Train manifest** — writes `train.manifest.json` with validation report before training
+- **HTTP `/train/validate`** — remote validation for agent-heart finetune pipeline
+
 ## [0.5.0] - 2026-06-20
 
 ### Added

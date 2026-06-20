@@ -1,4 +1,8 @@
-use axum::{Json, Router, extract::State, routing::{get, post}};
+use axum::{
+    extract::State,
+    routing::{get, post},
+    Json, Router,
+};
 use std::sync::Arc;
 
 use crate::config::Config;
@@ -41,6 +45,7 @@ pub async fn start(config: Config) -> anyhow::Result<()> {
     let app = Router::new()
         .route("/health", get(health))
         .route("/execute", post(execute_command))
+        .route("/train/validate", post(validate_train))
         .with_state(state);
 
     let addr = format!("0.0.0.0:{}", port);
@@ -69,15 +74,58 @@ async fn execute_command(
         Ok(result) => {
             let _ = state
                 .spine
-                .publish("muscle.executed", &serde_json::json!({
-                    "job_id": result.job_id,
-                    "command": result.command,
-                    "exit_code": result.exit_code,
-                    "success": result.success,
-                }))
+                .publish(
+                    "muscle.executed",
+                    &serde_json::json!({
+                        "job_id": result.job_id,
+                        "command": result.command,
+                        "exit_code": result.exit_code,
+                        "success": result.success,
+                    }),
+                )
                 .await;
             Json(serde_json::to_value(&result).unwrap_or_default())
         }
         Err(e) => Json(serde_json::json!({"error": e.to_string()})),
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct ValidateTrainRequest {
+    data: String,
+    #[serde(default = "default_min_entries")]
+    min_entries: u64,
+}
+
+fn default_min_entries() -> u64 {
+    1
+}
+
+async fn validate_train(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<ValidateTrainRequest>,
+) -> Json<serde_json::Value> {
+    let path = std::path::PathBuf::from(&req.data);
+    match crate::dataset::validate_dataset(&path, req.min_entries) {
+        Ok(report) => {
+            let subject = if report.valid {
+                "muscle.train.validated"
+            } else {
+                "muscle.train.rejected"
+            };
+            let _ = state
+                .spine
+                .publish(
+                    subject,
+                    &serde_json::json!({
+                        "path": report.path,
+                        "entries": report.entries,
+                        "valid": report.valid,
+                    }),
+                )
+                .await;
+            Json(serde_json::json!({ "ok": report.valid, "report": report }))
+        }
+        Err(e) => Json(serde_json::json!({ "ok": false, "error": e.to_string() })),
     }
 }

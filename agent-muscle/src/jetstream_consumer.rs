@@ -9,9 +9,7 @@ use agent_body_core::nats::subjects;
 use agent_body_core::{ComputeJob, ComputeResult, STREAM_NAME, STREAM_SUBJECT_WILDCARD};
 
 async fn connect_js(url: &str) -> Result<jetstream::Context> {
-    let client = async_nats::connect(url)
-        .await
-        .context("connect to NATS")?;
+    let client = async_nats::connect(url).await.context("connect to NATS")?;
     let js = jetstream::new(client);
     js.get_or_create_stream(jetstream::stream::Config {
         name: STREAM_NAME.to_string(),
@@ -42,11 +40,7 @@ async fn publish_result(js: &jetstream::Context, result: &ComputeResult) -> Resu
     let mut headers = async_nats::HeaderMap::new();
     headers.insert("Nats-Msg-Id", result.msg_id.as_str());
     let bytes = serde_json::to_vec(result)?;
-    js.publish_with_headers(
-        subjects::COMPUTE_RESULT.to_string(),
-        headers,
-        bytes.into(),
-    )
+    js.publish_with_headers(subjects::COMPUTE_RESULT.to_string(), headers, bytes.into())
         .await?
         .await
         .context("publish compute result")?;
@@ -66,7 +60,10 @@ pub async fn run_compute_consumer(url: &str) -> Result<()> {
         .await
         .context("fetch compute jobs")?;
 
-    info!("agent-muscle JetStream consumer active on {}", subjects::COMPUTE_JOB);
+    info!(
+        "agent-muscle JetStream consumer active on {}",
+        subjects::COMPUTE_JOB
+    );
 
     while let Some(msg) = messages.next().await {
         let msg = match msg {

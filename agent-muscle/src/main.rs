@@ -35,6 +35,17 @@ enum Commands {
         lora_rank: u32,
         #[arg(long, default_value = "./lora_adapters")]
         output: std::path::PathBuf,
+        #[arg(long, default_value_t = 1)]
+        min_entries: u64,
+        #[arg(long)]
+        validate_only: bool,
+    },
+    /// Validate JSONL training data without running MLX
+    Validate {
+        #[arg(long, default_value = "./training_data")]
+        data: std::path::PathBuf,
+        #[arg(long, default_value_t = 1)]
+        min_entries: u64,
     },
 }
 
@@ -57,15 +68,46 @@ async fn main() -> anyhow::Result<()> {
         Commands::Status => {
             let config = agent_muscle::config::Config::load()?;
             println!("agent-muscle status");
-            println!("  config: {}", agent_muscle::config::Config::config_path().display());
+            println!(
+                "  config: {}",
+                agent_muscle::config::Config::config_path().display()
+            );
             println!("  port: {}", config.server.port);
             println!("  spine: {}", config.spine.url);
+            println!(
+                "  default dataset: {}",
+                agent_muscle::dataset::default_merged_dataset().display()
+            );
         }
-        Commands::Train { model, data, epochs, learning_rate, lora_rank, output } => {
+        Commands::Train {
+            model,
+            data,
+            epochs,
+            learning_rate,
+            lora_rank,
+            output,
+            min_entries,
+            validate_only,
+        } => {
             let cfg = agent_muscle::train::TrainConfig {
-                model, data, epochs, learning_rate, lora_rank, output_dir: output, use_mlx: true,
+                model,
+                data,
+                epochs,
+                learning_rate,
+                lora_rank,
+                output_dir: output,
+                use_mlx: true,
+                min_entries,
+                validate_only,
             };
             agent_muscle::train::run_training(&cfg)?;
+        }
+        Commands::Validate { data, min_entries } => {
+            let report = agent_muscle::dataset::validate_dataset(&data, min_entries)?;
+            println!("{}", serde_json::to_string_pretty(&report)?);
+            if !report.valid {
+                std::process::exit(1);
+            }
         }
     }
     Ok(())
