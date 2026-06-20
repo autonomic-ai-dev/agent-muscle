@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-20
+
+### Added
+
+- **JetStream compute consumer** — `serve` consumes `autonomic.compute.job` with explicit ACK, publishes `autonomic.compute.result`
+
+### Changed
+
+- Version bumped from `0.4.0` to `0.5.0`
+
 ## [0.4.0] - 2026-06-20
 
 ### Added
