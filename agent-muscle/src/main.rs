@@ -212,7 +212,9 @@ async fn main() -> anyhow::Result<()> {
             }
             let name = match name {
                 Some(n) => n,
-                None => anyhow::bail!("usage: agent-muscle log <name> [--follow]  (or --list to see available logs)"),
+                None => anyhow::bail!(
+                    "usage: agent-muscle log <name> [--follow]  (or --list to see available logs)"
+                ),
             };
             if follow {
                 agent_muscle::log::follow_log(&name)?;
