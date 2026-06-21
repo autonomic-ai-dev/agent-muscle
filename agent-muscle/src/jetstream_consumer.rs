@@ -9,7 +9,7 @@ use agent_body_core::nats::subjects;
 use agent_body_core::{ComputeJob, ComputeResult, STREAM_NAME, STREAM_SUBJECT_WILDCARD};
 
 async fn connect_js(url: &str) -> Result<jetstream::Context> {
-    let client = async_nats::connect(url).await.context("connect to NATS")?;
+    let client = agent_body_core::connect_nats().await.context("connect to NATS")?;
     let js = jetstream::new(client);
     js.get_or_create_stream(jetstream::stream::Config {
         name: STREAM_NAME.to_string(),
