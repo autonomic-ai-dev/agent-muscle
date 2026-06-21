@@ -9,3 +9,4 @@ pub mod manifest;
 pub mod serve;
 pub mod spine;
 pub mod train;
+pub mod update;

@@ -60,6 +60,11 @@ enum Commands {
         #[command(subcommand)]
         command: K8sCommands,
     },
+    /// Update agent-muscle to the latest release
+    Update {
+        #[arg(short, long)]
+        force: bool,
+    },
     /// Display daemon logs
     Log {
         /// Daemon name (e.g. spine, nerves, heart) or "all"
@@ -197,6 +202,9 @@ async fn main() -> anyhow::Result<()> {
                 print!("{yaml}");
             }
         },
+        Commands::Update { force } => {
+            agent_muscle::update::run_update(force)?;
+        }
         Commands::Log { name, follow, list } => {
             if list {
                 let logs = agent_muscle::log::list_logs()?;

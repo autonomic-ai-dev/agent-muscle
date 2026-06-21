@@ -1,5 +1,4 @@
-use anyhow::{bail, Context, Result};
-use std::process::Command;
+use anyhow::Result;
 
 use crate::config::K8sConfig;
 use crate::k8s::gpu_job;
@@ -52,11 +51,13 @@ pub fn run_candle_training(config: &TrainConfig, k8s: &K8sConfig) -> Result<()> 
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     {
         println!("ℹ️  Candle on Apple Silicon delegates to MLX for local LoRA");
-        return crate::finetune::mlx::run_mlx_training(config);
+        crate::finetune::mlx::run_mlx_training(config)
     }
 
     #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
     {
+        use anyhow::bail;
+
         if local_cuda_available() {
             return run_local_candle_cuda(config);
         }
@@ -100,6 +101,9 @@ fn submit_k8s_gpu_job(config: &TrainConfig, k8s: &K8sConfig) -> Result<()> {
 
 #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
 fn run_local_candle_cuda(config: &TrainConfig) -> Result<()> {
+    use anyhow::{bail, Context};
+    use std::process::Command;
+
     ensure_candle_python()?;
 
     std::fs::create_dir_all(&config.output_dir)?;
@@ -144,7 +148,11 @@ fn run_local_candle_cuda(config: &TrainConfig) -> Result<()> {
     }
 }
 
+#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
 fn ensure_candle_python() -> Result<()> {
+    use anyhow::bail;
+    use std::process::Command;
+
     let check = Command::new("python3")
         .arg("-c")
         .arg("import torch; print(torch.cuda.is_available())")
@@ -161,6 +169,7 @@ fn ensure_candle_python() -> Result<()> {
     }
 }
 
+#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
 fn candle_train_script() -> &'static str {
     r#"#!/usr/bin/env python3
 """Minimal LoRA orchestration script for agent-muscle candle backend."""
