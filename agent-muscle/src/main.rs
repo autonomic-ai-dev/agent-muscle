@@ -60,6 +60,17 @@ enum Commands {
         #[command(subcommand)]
         command: K8sCommands,
     },
+    /// Display daemon logs
+    Log {
+        /// Daemon name (e.g. spine, nerves, heart) or "all"
+        name: Option<String>,
+        /// Follow log output (tail -f)
+        #[arg(short, long)]
+        follow: bool,
+        /// List available log files
+        #[arg(short, long)]
+        list: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -186,6 +197,29 @@ async fn main() -> anyhow::Result<()> {
                 print!("{yaml}");
             }
         },
+        Commands::Log { name, follow, list } => {
+            if list {
+                let logs = agent_muscle::log::list_logs()?;
+                if logs.is_empty() {
+                    println!("No log files found.");
+                } else {
+                    println!("Available logs:");
+                    for log in &logs {
+                        println!("  {log}");
+                    }
+                }
+                return Ok(());
+            }
+            let name = match name {
+                Some(n) => n,
+                None => anyhow::bail!("usage: agent-muscle log <name> [--follow]  (or --list to see available logs)"),
+            };
+            if follow {
+                agent_muscle::log::follow_log(&name)?;
+            } else {
+                agent_muscle::log::print_log(&name)?;
+            }
+        }
     }
     Ok(())
 }
