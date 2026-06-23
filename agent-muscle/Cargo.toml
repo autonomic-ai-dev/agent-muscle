@@ -8,7 +8,7 @@ default = []
 candle = ["dep:candle-core"]
 
 [dependencies]
-agent-body-core = { git = "https://github.com/autonomic-ai-dev/agent-body", branch = "feat/install-update-ux", features = ["nats"] }
+agent-body-core = { git = "https://github.com/autonomic-ai-dev/agent-body", features = ["nats"] }
 anyhow = "1"
 async-nats = "0.39"
 axum = "0.7"
