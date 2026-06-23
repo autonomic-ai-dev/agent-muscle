@@ -1,11 +1,34 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 
+use agent_body_core::cli::apply_progress_env;
+use agent_body_core::ui::ProgressMode;
 use agent_muscle::finetune::TrainBackend;
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum ProgressArg {
+    Auto,
+    Plain,
+    Quiet,
+}
+
+impl From<ProgressArg> for ProgressMode {
+    fn from(value: ProgressArg) -> Self {
+        match value {
+            ProgressArg::Auto => ProgressMode::Auto,
+            ProgressArg::Plain => ProgressMode::Plain,
+            ProgressArg::Quiet => ProgressMode::Quiet,
+        }
+    }
+}
 
 #[derive(Parser)]
 #[command(version)]
 #[command(name = "agent-muscle", about = "Remote actuator and command execution")]
 struct Cli {
+    /// Progress output style: auto, plain, or quiet
+    #[arg(long, value_enum, global = true, default_value = "auto")]
+    progress: ProgressArg,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -104,6 +127,7 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let cli = Cli::parse();
+    apply_progress_env(cli.progress.into());
     match cli.command {
         Commands::Serve => {
             let config = agent_muscle::config::Config::load()?;
