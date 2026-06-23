@@ -97,6 +97,8 @@ In standalone mode, muscle is a CLI tool for ad-hoc execution and training valid
 | `agent-muscle k8s render-job` | Emit a GPU Job manifest |
 | `agent-muscle status` | Show actuator config, backends, dataset paths |
 
+Global `--progress` (or `AGENT_PROGRESS=1`) enables structured ProgressTree CLI output.
+
 ---
 
 ## HTTP API
