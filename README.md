@@ -1,8 +1,10 @@
 # agent-muscle — Remote Actuator and Training Pipeline
 
-**Sandboxed command execution, LoRA fine-tuning (MLX/candle), dataset validation, and K8s GPU orchestration.**
+**Cloud-Native role: Execution runtime** (kubelet / CRI analog) — sandboxed commands, JSON contracts, and training job orchestration.
 
-agent-muscle is the **muscle** of the Autonomic AI ecosystem. It executes shell commands in a subprocess with JSON output, validates training datasets before expensive GPU runs, and orchestrates LoRA fine-tuning across local MLX/candle backends or remote Kubernetes GPU clusters.
+agent-muscle is the **execution runtime** for Autonomic. It runs shell commands with structured JSON output, validates training datasets before GPU work, and orchestrates LoRA fine-tuning across local MLX/candle backends or remote Kubernetes GPU clusters.
+
+> Codename: *muscle organ*. Mapping: [cloud-native-platform.md](https://github.com/autonomic-ai-dev/agent-body/blob/master/docs/cloud-native-platform.md)
 
 The key design: **execution and training are separate pipelines with a shared validation gate.** Every command goes through a JSON-structured actuator that captures stdout, stderr, exit code, and duration. Every training run first validates the dataset format, model availability, and config — only then does it consume GPU hours.
 
