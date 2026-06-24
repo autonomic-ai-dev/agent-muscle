@@ -1,25 +1,44 @@
-# agent-muscle — Remote Actuator and Training Pipeline
+# agent-muscle — The Execution & Training Runtime
 
-**Cloud-Native role: Execution runtime** (kubelet / CRI analog) — sandboxed commands, JSON contracts, and training job orchestration.
+**Cloud-Native role: Execution runtime** (kubelet / CRI analog) — sandboxed command execution, strictly typed JSON APIs, and hardware-aware training job orchestration.
 
-agent-muscle is the **execution runtime** for Autonomic. It runs shell commands with structured JSON output, validates training datasets before GPU work, and orchestrates LoRA fine-tuning across local MLX/candle backends or remote Kubernetes GPU clusters.
+`agent-muscle` is the execution runtime for the Autonomic AI cluster. 
+In a traditional AI framework, the LLM is forced to generate complex Python loops, parse stdout, and write massive Kubernetes YAML files character by character. This leads to the "JSON Tax"—wasted tokens and hallucinated syntax errors.
 
-> Codename: *muscle organ*. Mapping: [cloud-native-platform.md](https://github.com/autonomic-ai-dev/agent-body/blob/master/docs/cloud-native-platform.md)
-
-The key design: **execution and training are separate pipelines with a shared validation gate.** Every command goes through a JSON-structured actuator that captures stdout, stderr, exit code, and duration. Every training run first validates the dataset format, model availability, and config — only then does it consume GPU hours.
+`agent-muscle` solves this by decoupling the LLM's reasoning from physical execution. The LLM outputs a tiny routing signal; `agent-muscle` catches it, deserializes it into strict Rust structs, and handles the heavy lifting natively.
 
 ---
 
-## Core Concept
+## Under the Hood: How it Works
 
-AI agents need to execute code and train models. But executing arbitrary shell commands is dangerous, and training on malformed data wastes expensive GPU hours.
+### 1. The Universal Execution Engine (`/execute`)
+`agent-muscle` is not just for Kubernetes. It acts as the universal language execution runtime for your agents. 
+If an agent wants to run a Python script, compile a Rust binary, or run a bash command, it sends a simple JSON payload to the `/execute` endpoint:
 
-agent-muscle provides two safe pipelines:
+```json
+{
+  "command": "python3 script.py",
+  "cwd": "/src/scripts"
+}
+```
 
-1. **Command execution** — subprocess execution with full JSON result (stdout, stderr, exit code, duration, success flag). No TTY, no interactive prompts, no unbounded execution.
-2. **LoRA fine-tuning** — a validation-first pipeline: validate dataset JSONL structure → check model availability → dry-run config → actual training. Each step gates the next.
+`agent-muscle` natively spawns a secure subprocess (`sh -c`) on the host machine. It captures the `stdout`, `stderr`, the exact `exit_code`, and the `duration_ms`, and perfectly packages that back to the agent as a strict JSON result. You no longer need brittle `exec()` calls inside Python LLM scripts.
 
-Both pipelines are accessible via CLI, HTTP API (`:3103`), and NATS JetStream (async compute jobs).
+### 2. Deterministic ML Workloads (`/train/run`)
+When an agent wants to fine-tune a model, it doesn't need to generate a 200-line Kubernetes GPU Job YAML. It sends a flat routing signal:
+
+```json
+{
+  "model": "llama-8b",
+  "data": "/dataset.jsonl",
+  "backend": "auto"
+}
+```
+
+Axum automatically deserializes this into a strict `RunTrainRequest` Rust struct. 
+- **Validation:** Rust physically inspects the dataset file to ensure the JSONL format is correct *before* wasting GPU compute.
+- **Hardware Resolution:** `agent-muscle` detects the host hardware. If running on an M-series Mac, it natively utilizes the **MLX** backend. If running on a Windows/Linux node, it falls back to the **Candle** backend (checking for local CUDA or routing to CPU).
+- **Execution:** It uses `tokio::task::spawn_blocking` to natively run the training loop or construct the complex Kubernetes scheduling manifests.
 
 ```mermaid
 flowchart LR
@@ -29,12 +48,11 @@ flowchart LR
     end
 
     subgraph Training
-        Data["Training data JSONL"] --> Validate["validate --data"]
-        Validate --> DryRun["train --validate-only"]
-        DryRun --> Train["train --backend auto"]
-        Train --> MLX["MLX (local)"]
-        Train --> Candle["candle (local/CUDA)"]
-        Train --> K8s["Kubernetes GPU operator"]
+        Data["LLM: { model: 'llama', backend: 'auto' }"] --> Parse["Axum Strict Deserialization"]
+        Parse --> Validate["Validate JSONL Dataset"]
+        Validate --> Resolve["Hardware Resolution"]
+        Resolve --> MLX["MLX (Apple Silicon)"]
+        Resolve --> Candle["Candle (CUDA / K8s GPU Job)"]
     end
 
     subgraph Async
