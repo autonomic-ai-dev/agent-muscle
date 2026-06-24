@@ -42,18 +42,10 @@ pub fn resolve_backend(config: &TrainConfig, k8s: &crate::config::K8sConfig) -> 
             } else if k8s.enabled {
                 TrainBackend::Candle
             } else {
-                #[cfg(feature = "candle")]
-                {
-                    if candle::local_cuda_available() {
-                        TrainBackend::Candle
-                    } else {
-                        TrainBackend::Mlx
-                    }
-                }
-                #[cfg(not(feature = "candle"))]
-                {
-                    TrainBackend::Mlx
-                }
+                // On non-Apple hardware, always fallback to Candle. 
+                // The candle backend runner will gracefully bail with a clean error 
+                // if neither Kubernetes nor local CUDA is available.
+                TrainBackend::Candle
             }
         }
         other => other,
