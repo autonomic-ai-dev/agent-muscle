@@ -22,10 +22,7 @@ pub async fn run_python(code: &str) -> Result<ExecResult> {
     let job_id = uuid::Uuid::new_v4().to_string();
     let start = std::time::Instant::now();
 
-    let output = Command::new("python3")
-        .args(["-c", code])
-        .output()
-        .await?;
+    let output = Command::new("python3").args(["-c", code]).output().await?;
 
     let duration_ms = start.elapsed().as_millis() as u64;
     let exit_code = output.status.code().unwrap_or(-1);

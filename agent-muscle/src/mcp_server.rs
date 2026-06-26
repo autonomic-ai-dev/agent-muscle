@@ -1,7 +1,9 @@
 use rmcp::handler::server::wrapper::Parameters;
-use rmcp::model::{CallToolResult, Content, ErrorData as McpError, ServerInfo, Implementation, ServerCapabilities};
-use rmcp::{tool, tool_handler, tool_router, ServerHandler, ServiceExt};
+use rmcp::model::{
+    CallToolResult, Content, ErrorData as McpError, Implementation, ServerCapabilities, ServerInfo,
+};
 use rmcp::schemars::JsonSchema;
+use rmcp::{tool, tool_handler, tool_router, ServerHandler, ServiceExt};
 use serde::Deserialize;
 use std::path::PathBuf;
 
@@ -18,7 +20,7 @@ pub struct MuscleMcp {
 
 impl MuscleMcp {
     pub fn new(config: Config) -> Self {
-        Self { 
+        Self {
             config,
             tool_router: Self::tool_router(),
         }
