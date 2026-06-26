@@ -37,6 +37,8 @@ struct Cli {
 enum Commands {
     /// Start the actuator daemon
     Serve,
+    /// Start the Standalone MCP Server over stdio
+    ServeMcp,
     /// Run a command and stream output
     Run {
         command: String,
@@ -132,6 +134,10 @@ async fn main() -> anyhow::Result<()> {
         Commands::Serve => {
             let config = agent_muscle::config::Config::load()?;
             agent_muscle::serve::start(config).await?;
+        }
+        Commands::ServeMcp => {
+            let config = agent_muscle::config::Config::load()?;
+            agent_muscle::mcp_server::MuscleMcp::run(config).await?;
         }
         Commands::Run { command, cwd } => {
             let result = agent_muscle::executor::run_command(&command, cwd.as_deref()).await?;
