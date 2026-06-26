@@ -6,6 +6,7 @@ pub mod jetstream_consumer;
 pub mod k8s;
 pub mod log;
 pub mod manifest;
+pub mod mcp_server;
 pub mod serve;
 pub mod spine;
 pub mod train;

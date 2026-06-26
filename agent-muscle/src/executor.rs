@@ -15,6 +15,33 @@ pub struct ExecResult {
 }
 
 pub async fn run_command(cmd: &str, cwd: Option<&Path>) -> Result<ExecResult> {
+    exec_shell(cmd, cwd).await
+}
+
+pub async fn run_python(code: &str) -> Result<ExecResult> {
+    let job_id = uuid::Uuid::new_v4().to_string();
+    let start = std::time::Instant::now();
+
+    let output = Command::new("python3")
+        .args(["-c", code])
+        .output()
+        .await?;
+
+    let duration_ms = start.elapsed().as_millis() as u64;
+    let exit_code = output.status.code().unwrap_or(-1);
+
+    Ok(ExecResult {
+        job_id,
+        command: format!("python3 -c {}", code.len()),
+        exit_code,
+        stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+        stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+        duration_ms,
+        success: output.status.success(),
+    })
+}
+
+async fn exec_shell(cmd: &str, cwd: Option<&Path>) -> Result<ExecResult> {
     let job_id = uuid::Uuid::new_v4().to_string();
     let start = std::time::Instant::now();
 
