@@ -111,6 +111,7 @@ In standalone mode, muscle is a CLI tool for ad-hoc execution and training valid
 |---------|-------------|
 | `agent-muscle run <cmd>` | Execute a command, return JSON result |
 | `agent-muscle serve` | HTTP API daemon + JetStream compute consumer |
+| `agent-muscle serve-mcp` | Start MCP stdio server only (no HTTP daemon) |
 | `agent-muscle train` | LoRA fine-tuning (`--backend mlx\|candle\|auto`) |
 | `agent-muscle validate --data PATH` | JSONL dataset validation gate |
 | `agent-muscle operator run\|sync\|status` | K8s GPU scaling from training queue |

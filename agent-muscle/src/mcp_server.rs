@@ -1,7 +1,9 @@
 use rmcp::handler::server::wrapper::Parameters;
-use rmcp::model::{CallToolResult, Content, ErrorData as McpError, ServerInfo, Implementation, ServerCapabilities};
-use rmcp::{tool, tool_handler, tool_router, ServerHandler, ServiceExt};
+use rmcp::model::{
+    CallToolResult, Content, ErrorData as McpError, Implementation, ServerCapabilities, ServerInfo,
+};
 use rmcp::schemars::JsonSchema;
+use rmcp::{tool, tool_handler, tool_router, ServerHandler, ServiceExt};
 use serde::Deserialize;
 use std::path::PathBuf;
 
@@ -18,7 +20,7 @@ pub struct MuscleMcp {
 
 impl MuscleMcp {
     pub fn new(config: Config) -> Self {
-        Self { 
+        Self {
             config,
             tool_router: Self::tool_router(),
         }
@@ -183,5 +185,55 @@ impl ServerHandler for MuscleMcp {
         impl_info.version = env!("CARGO_PKG_VERSION").into();
         info.server_info = impl_info;
         info
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_model_is_llama_3b() {
+        assert!(default_model().contains("Llama-3.2"));
+    }
+
+    #[test]
+    fn default_data_is_training_data() {
+        assert_eq!(default_data(), "./training_data");
+    }
+
+    #[test]
+    fn default_epochs_is_3() {
+        assert_eq!(default_epochs(), 3);
+    }
+
+    #[test]
+    fn default_learning_rate_is_1e5() {
+        assert!((default_learning_rate() - 1e-5).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn default_lora_rank_is_16() {
+        assert_eq!(default_lora_rank(), 16);
+    }
+
+    #[test]
+    fn default_backend_is_auto() {
+        assert_eq!(default_backend(), "auto");
+    }
+
+    #[test]
+    fn default_min_entries_is_1() {
+        assert_eq!(default_min_entries(), 1);
+    }
+
+    #[test]
+    fn default_validate_only_is_false() {
+        assert!(!default_validate_only());
+    }
+
+    #[test]
+    fn default_output_dir_is_lora_adapters() {
+        assert_eq!(default_output_dir(), "./lora_adapters");
     }
 }
