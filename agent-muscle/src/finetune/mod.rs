@@ -107,3 +107,87 @@ mod tests {
         );
     }
 }
+
+
+use crate::config::K8sConfig;
+use crate::trace_collector::TraceStore;
+
+/// Minimum successful traces before auto-LoRA (Kernel V2 Phase 5).
+pub const AUTO_LORA_MIN_TRACES: u64 = 500;
+
+/// Export traces to JSONL and run LoRA when `trace_count >= min_traces`.
+pub fn run_lora_from_traces(
+    store: &TraceStore,
+    config: &TrainConfig,
+    k8s: &K8sConfig,
+    min_traces: u64,
+) -> anyhow::Result<()> {
+    let count = store.count()?;
+    if count < min_traces {
+        tracing::info!(count, min_traces, "skipping auto-LoRA: insufficient traces");
+        return Ok(());
+    }
+
+    let export_dir = config.data.clone();
+    let jsonl = store.export_jsonl(&export_dir)?;
+    tracing::info!(path = %jsonl.display(), count, "exported traces for LoRA");
+
+    if config.validate_only {
+        let validation = crate::train::validate_training_data(config)?;
+        if !validation.valid {
+            anyhow::bail!("dataset validation failed");
+        }
+        return Ok(());
+    }
+
+    run_backend_training(config, k8s)
+}
+
+#[cfg(test)]
+mod lora_trace_tests {
+    use super::*;
+    use crate::trace_collector::{ExecutionTraceEvent, TraceStore};
+    use tempfile::tempdir;
+
+    fn seed_traces(store: &TraceStore, n: u64) {
+        for i in 0..n {
+            store
+                .insert(&ExecutionTraceEvent {
+                    msg_id: format!("trace:seed-{i}"),
+                    execution_id: format!("exec-{i}"),
+                    workflow_name: "wf".into(),
+                    prompt: format!("prompt {i}"),
+                    completion: format!("completion {i}"),
+                    reward: 1.0,
+                    success: true,
+                })
+                .unwrap();
+        }
+    }
+
+    #[test]
+    fn lora_round_from_500_traces() {
+        let dir = tempdir().unwrap();
+        let db = dir.path().join("training_traces.db");
+        let store = TraceStore::open(&db).unwrap();
+        seed_traces(&store, 500);
+        assert_eq!(store.count().unwrap(), 500);
+
+        let data_dir = dir.path().join("data");
+        let jsonl = store.export_jsonl(&data_dir).unwrap();
+        assert!(jsonl.exists());
+
+        let report = crate::dataset::validate_dataset(&data_dir, 500).unwrap();
+        assert!(report.valid, "{:?}", report.errors);
+
+        let cfg = TrainConfig {
+            data: data_dir,
+            validate_only: true,
+            min_entries: 500,
+            output_dir: dir.path().join("out"),
+            ..TrainConfig::default()
+        };
+        let k8s = K8sConfig::default();
+        run_lora_from_traces(&store, &cfg, &k8s, 500).unwrap();
+    }
+}

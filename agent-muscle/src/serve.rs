@@ -37,6 +37,9 @@ pub async fn start(config: Config) -> anyhow::Result<()> {
     let jetstream_enabled = config.nats.jetstream_consumer;
     let k8s = config.k8s.clone();
     let train_defaults = config.default_train_config();
+    let auto_lora_train = train_defaults.clone();
+    let auto_lora_k8s = k8s.clone();
+    let trace_db = crate::trace_collector::default_db_path();
     let state = Arc::new(AppState { config, spine });
 
     if jetstream_enabled {
@@ -46,7 +49,18 @@ pub async fn start(config: Config) -> anyhow::Result<()> {
                 tracing::error!(error = %e, "JetStream compute consumer stopped");
             }
         });
+
+        let trace_db = crate::trace_collector::default_db_path();
+        tokio::spawn(async move {
+            if let Err(e) = crate::trace_collector::run_trace_consumer(trace_db).await {
+                tracing::error!(error = %e, "trace collector stopped");
+            }
+        });
     }
+
+    tokio::spawn(async move {
+        crate::trace_collector::run_auto_lora_poll(trace_db, auto_lora_train, auto_lora_k8s).await;
+    });
 
     if k8s.enabled {
         let url = nats_url;
