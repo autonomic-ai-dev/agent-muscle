@@ -13,3 +13,4 @@ pub mod preference_pairs;
 pub mod trace_collector;
 pub mod train;
 pub mod update;
+pub mod lora_hot_swap;
