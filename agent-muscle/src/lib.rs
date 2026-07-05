@@ -9,5 +9,6 @@ pub mod manifest;
 pub mod mcp_server;
 pub mod serve;
 pub mod spine;
+pub mod trace_collector;
 pub mod train;
 pub mod update;
