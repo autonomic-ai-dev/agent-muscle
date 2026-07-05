@@ -83,6 +83,10 @@ impl TraceStore {
         Ok(u64::try_from(count).unwrap_or(0))
     }
 
+    pub fn export_preference_pairs(&self, limit: usize) -> Result<Vec<crate::preference_pairs::PreferencePair>> {
+        crate::preference_pairs::export_preference_pairs(&self.conn, limit)
+    }
+
     pub fn export_jsonl(&self, out_dir: &Path) -> Result<PathBuf> {
         std::fs::create_dir_all(out_dir)?;
         let out_path = out_dir.join("traces_export.jsonl");
