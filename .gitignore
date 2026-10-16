@@ -1,6 +1,5 @@
 docs/superpowers
 /target/
-Cargo.lock
 .DS_Store
 *.swp
 *.swo
