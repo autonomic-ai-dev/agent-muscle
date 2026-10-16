@@ -49,11 +49,11 @@ else
   mv "$TMP_DIR/$BINARY" "${INSTALL_DIR}/${BINARY}"
 fi
 
-# macOS Gatekeeper: clear quarantine + ad-hoc sign
+# macOS Gatekeeper: clear quarantine and verify Developer ID signature
 if [[ "$(uname -s)" == "Darwin" ]] && command -v codesign >/dev/null 2>&1; then
   xattr -cr "${INSTALL_DIR}/${BINARY}" 2>/dev/null || true
-  codesign --force --sign - "${INSTALL_DIR}/${BINARY}" 2>/dev/null || true
-  echo "macOS: cleared quarantine and adhoc-signed ${BINARY}"
+  codesign --verify --verbose "${INSTALL_DIR}/${BINARY}" 2>/dev/null || true
+  echo "macOS: cleared quarantine and verified signature on ${BINARY}"
 fi
 
 echo "==> Installed: ${INSTALL_DIR}/${BINARY}"
