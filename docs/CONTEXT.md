@@ -7,7 +7,8 @@ Execution and training runtime for Autonomic. Part of [agent-body](https://githu
 | Role | Execution runtime (kubelet / CRI analog) |
 | Binary | `agent-muscle` |
 | HTTP | `:3103` |
-| Version | 0.9.0+ |
+| Version | v1.0.0-beta.2 |
+| Docs Hub | [https://autonomic-ai.dev/docs/execution](https://autonomic-ai.dev/docs/execution) · [Architecture](https://autonomic-ai.dev/docs/architecture) |
 
 ## When to use
 
@@ -35,4 +36,4 @@ Path filter on `agent-muscle/**` + Cargo/Makefile/scripts/`.github`. Docs-only P
 
 ## Related
 
-Spine (orchestration) · immune (sandbox/scan) · brain (verify ledger)
+Operator usage: [https://autonomic-ai.dev/docs/execution](https://autonomic-ai.dev/docs/execution) · Architecture: [https://autonomic-ai.dev/docs/architecture](https://autonomic-ai.dev/docs/architecture) · Spine (orchestration) · immune (sandbox/scan) · brain (verify ledger)

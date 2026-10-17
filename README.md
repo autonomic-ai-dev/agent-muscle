@@ -1,6 +1,6 @@
 # agent-muscle — The Execution & Training Runtime
 
-Agent context: [docs/CONTEXT.md](docs/CONTEXT.md) · Architecture: [https://autonomic-ai.dev/docs/architecture](https://autonomic-ai.dev/docs/architecture).
+Agent context: [docs/CONTEXT.md](docs/CONTEXT.md) · Execution Guide: [https://autonomic-ai.dev/docs/execution](https://autonomic-ai.dev/docs/execution) · Architecture: [https://autonomic-ai.dev/docs/architecture](https://autonomic-ai.dev/docs/architecture).
 
 **Cloud-Native role: Execution runtime** (kubelet / CRI analog) — sandboxed command execution, strictly typed JSON APIs, and hardware-aware training job orchestration.
 
@@ -185,9 +185,11 @@ Training queue subject: `autonomic.muscle.train.request`
 
 ---
 
-## Architecture
+## Architecture & Documentation
 
-For the complete 11-organ architecture specification, data flows, and MCP tool contracts, see the centralized [Autonomic AI Architecture Hub](https://autonomic-ai.dev/docs/architecture).
+For complete architectural specifications, AST syntax safety rules, and MCP tool contracts, visit the centralized documentation hub:
+- **Execution Runtime Guide**: [https://autonomic-ai.dev/docs/execution](https://autonomic-ai.dev/docs/execution)
+- **Ecosystem Architecture**: [https://autonomic-ai.dev/docs/architecture](https://autonomic-ai.dev/docs/architecture)
 
 ---
 
