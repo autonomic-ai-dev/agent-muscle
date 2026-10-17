@@ -26,6 +26,16 @@ If an agent wants to run a Python script, compile a Rust binary, or run a bash c
 
 `agent-muscle` natively spawns a secure subprocess (`sh -c`) on the host machine. It captures the `stdout`, `stderr`, the exact `exit_code`, and the `duration_ms`, and perfectly packages that back to the agent as a strict JSON result. You no longer need brittle `exec()` calls inside Python LLM scripts.
 
+#### Pre-execution AST Syntax & Safety Guard
+Before spawning a subshell, `agent-muscle` parses commands in-memory with `tree-sitter` bash AST analysis:
+- **Syntax validation:** Intercepts unclosed quotes and malformed shell statements before a failed subprocess spawn.
+- **Fail-fast safety:** Blocks destructive recursive operations on root or home targets (`rm -rf /`, `rm -rf ~`, `rm -rf $HOME`), raw block device overwrites (`dd if=/dev/zero of=/dev/sd*`), and fork bombs.
+
+#### Adaptive Output Compression & Failure Slicing
+Long outputs (hundreds or thousands of lines) can flood model context windows:
+- **Success (`exit 0`):** Compresses repetitive build and test stdout into clear head/tail summaries while preserving status verdicts.
+- **Failure (`exit != 0`):** Automatically slices compiler errors (`error[E...]`), stack traces, and test failure blocks with contextual windows while compressing irrelevant passing tests.
+
 ### 2. Deterministic ML Workloads (`/train/run`)
 When an agent wants to fine-tune a model, it doesn't need to generate a 200-line Kubernetes GPU Job YAML. It sends a flat routing signal:
 

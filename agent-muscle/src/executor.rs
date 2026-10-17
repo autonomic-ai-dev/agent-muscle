@@ -3,6 +3,9 @@ use serde::Serialize;
 use std::path::Path;
 use tokio::process::Command;
 
+use crate::ast_guard::validate_bash;
+use crate::output_slicer::{compress_output, DEFAULT_MAX_OUTPUT_LINES};
+
 #[derive(Debug, Serialize)]
 pub struct ExecResult {
     pub job_id: String,
@@ -15,6 +18,7 @@ pub struct ExecResult {
 }
 
 pub async fn run_command(cmd: &str, cwd: Option<&Path>) -> Result<ExecResult> {
+    validate_bash(cmd).map_err(|e| anyhow::anyhow!("{e}"))?;
     exec_shell(cmd, cwd).await
 }
 
@@ -27,12 +31,18 @@ pub async fn run_python(code: &str) -> Result<ExecResult> {
     let duration_ms = start.elapsed().as_millis() as u64;
     let exit_code = output.status.code().unwrap_or(-1);
 
+    let raw_stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let raw_stderr = String::from_utf8_lossy(&output.stderr).to_string();
+
+    let stdout = compress_output(&raw_stdout, exit_code, DEFAULT_MAX_OUTPUT_LINES);
+    let stderr = compress_output(&raw_stderr, exit_code, DEFAULT_MAX_OUTPUT_LINES);
+
     Ok(ExecResult {
         job_id,
         command: format!("python3 -c {}", code.len()),
         exit_code,
-        stdout: String::from_utf8_lossy(&output.stdout).to_string(),
-        stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+        stdout,
+        stderr,
         duration_ms,
         success: output.status.success(),
     })
@@ -59,13 +69,46 @@ async fn exec_shell(cmd: &str, cwd: Option<&Path>) -> Result<ExecResult> {
     let duration_ms = start.elapsed().as_millis() as u64;
     let exit_code = output.status.code().unwrap_or(-1);
 
+    let raw_stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let raw_stderr = String::from_utf8_lossy(&output.stderr).to_string();
+
+    let stdout = compress_output(&raw_stdout, exit_code, DEFAULT_MAX_OUTPUT_LINES);
+    let stderr = compress_output(&raw_stderr, exit_code, DEFAULT_MAX_OUTPUT_LINES);
+
     Ok(ExecResult {
         job_id,
         command: cmd.to_string(),
         exit_code,
-        stdout: String::from_utf8_lossy(&output.stdout).to_string(),
-        stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+        stdout,
+        stderr,
         duration_ms,
         success: output.status.success(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn run_command_executes_valid_echo() {
+        let res = run_command("echo hello_muscle", None).await.unwrap();
+        assert_eq!(res.exit_code, 0);
+        assert!(res.stdout.contains("hello_muscle"));
+        assert!(res.success);
+    }
+
+    #[tokio::test]
+    async fn run_command_rejects_ast_syntax_error() {
+        let res = run_command("echo \"unclosed quote", None).await;
+        assert!(res.is_err());
+        assert!(res.unwrap_err().to_string().contains("AST syntax error"));
+    }
+
+    #[tokio::test]
+    async fn run_command_rejects_destructive_root_rm() {
+        let res = run_command("rm -rf /", None).await;
+        assert!(res.is_err());
+        assert!(res.unwrap_err().to_string().contains("Destructive command blocked"));
+    }
 }

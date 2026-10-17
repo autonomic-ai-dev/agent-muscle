@@ -35,7 +35,6 @@ pub fn export_preference_pairs(conn: &Connection, limit: usize) -> Result<Vec<Pr
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::trace_collector::{ExecutionTraceEvent, TraceStore};
 
     #[test]

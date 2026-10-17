@@ -15,6 +15,7 @@ use crate::train::{run_training, TrainConfig};
 #[derive(Clone)]
 pub struct MuscleMcp {
     config: Config,
+    #[allow(dead_code)]
     tool_router: rmcp::handler::server::router::tool::ToolRouter<Self>,
 }
 
