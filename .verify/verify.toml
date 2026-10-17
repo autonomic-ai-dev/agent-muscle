@@ -1,0 +1,8 @@
+[verify]
+commands = [
+  "cargo test",
+  "cargo check",
+  "cargo clippy",
+  "agent-muscle run",
+  ".verify/",
+]
