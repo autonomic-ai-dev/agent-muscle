@@ -109,6 +109,9 @@ mod tests {
     async fn run_command_rejects_destructive_root_rm() {
         let res = run_command("rm -rf /", None).await;
         assert!(res.is_err());
-        assert!(res.unwrap_err().to_string().contains("Destructive command blocked"));
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .contains("Destructive command blocked"));
     }
 }

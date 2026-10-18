@@ -47,13 +47,13 @@ fn compress_failure(lines: &[&str], max_lines: usize) -> String {
     let mut keep = vec![false; total];
 
     // Always keep initial 5 lines (invocation context)
-    for i in 0..5.min(total) {
-        keep[i] = true;
+    for item in keep.iter_mut().take(5.min(total)) {
+        *item = true;
     }
 
     // Always keep final 15 lines (summary, test verdicts, panic location)
-    for i in total.saturating_sub(15)..total {
-        keep[i] = true;
+    for item in keep.iter_mut().skip(total.saturating_sub(15)) {
+        *item = true;
     }
 
     let error_patterns = [
@@ -77,8 +77,8 @@ fn compress_failure(lines: &[&str], max_lines: usize) -> String {
             found_error = true;
             let start = i.saturating_sub(2);
             let end = (i + 5).min(total);
-            for k in start..end {
-                keep[k] = true;
+            for item in &mut keep[start..end] {
+                *item = true;
             }
         }
     }
@@ -103,8 +103,8 @@ fn compress_failure(lines: &[&str], max_lines: usize) -> String {
             if skipped > 2 {
                 result.push(format!("... [compressed {skipped} non-error lines] ..."));
             } else {
-                for k in start_skip..i {
-                    result.push(lines[k].to_string());
+                for line in &lines[start_skip..i] {
+                    result.push((*line).to_string());
                 }
             }
         }
@@ -139,7 +139,9 @@ mod tests {
 
     #[test]
     fn compresses_success_long_output() {
-        let lines: Vec<String> = (1..=100).map(|i| format!("Compiling package_{i}")).collect();
+        let lines: Vec<String> = (1..=100)
+            .map(|i| format!("Compiling package_{i}"))
+            .collect();
         let raw = lines.join("\n");
         let compressed = compress_output(&raw, 0, 30);
         assert!(compressed.contains("compressed"));

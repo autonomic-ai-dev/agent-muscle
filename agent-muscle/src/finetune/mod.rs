@@ -108,7 +108,6 @@ mod tests {
     }
 }
 
-
 use crate::config::K8sConfig;
 use crate::trace_collector::TraceStore;
 

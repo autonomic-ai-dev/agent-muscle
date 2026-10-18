@@ -97,7 +97,9 @@ fn walk_node(source: &str, node: Node, issues: &mut Vec<GuardIssue>) {
                     {
                         issues.push(GuardIssue {
                             line,
-                            message: format!("Destructive command blocked: rm with target `{token}`"),
+                            message: format!(
+                                "Destructive command blocked: rm with target `{token}`"
+                            ),
                         });
                     }
                 }
