@@ -83,16 +83,19 @@ impl TraceStore {
         Ok(u64::try_from(count).unwrap_or(0))
     }
 
-    pub fn export_preference_pairs(&self, limit: usize) -> Result<Vec<crate::preference_pairs::PreferencePair>> {
+    pub fn export_preference_pairs(
+        &self,
+        limit: usize,
+    ) -> Result<Vec<crate::preference_pairs::PreferencePair>> {
         crate::preference_pairs::export_preference_pairs(&self.conn, limit)
     }
 
     pub fn export_jsonl(&self, out_dir: &Path) -> Result<PathBuf> {
         std::fs::create_dir_all(out_dir)?;
         let out_path = out_dir.join("traces_export.jsonl");
-        let mut stmt = self.conn.prepare(
-            "SELECT prompt, completion FROM traces WHERE success = 1 ORDER BY id ASC",
-        )?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT prompt, completion FROM traces WHERE success = 1 ORDER BY id ASC")?;
         let rows = stmt.query_map([], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
         })?;
@@ -145,7 +148,10 @@ pub async fn run_trace_consumer(db_path: PathBuf) -> Result<()> {
         .await
         .context("get muscle-trace-collector consumer")?;
 
-    info!(subject = EXECUTION_COMPLETED_SUBJECT, "trace collector active");
+    info!(
+        subject = EXECUTION_COMPLETED_SUBJECT,
+        "trace collector active"
+    );
 
     let mut messages = consumer
         .fetch()
@@ -187,7 +193,6 @@ pub async fn run_trace_consumer(db_path: PathBuf) -> Result<()> {
     }
 }
 
-
 /// Poll interval for auto-LoRA (Kernel V2 Phase 5).
 pub const AUTO_LORA_POLL_INTERVAL: Duration = Duration::from_secs(6 * 3600);
 
@@ -212,14 +217,25 @@ pub async fn run_auto_lora_poll(
                     let k8s_ref = k8s.clone();
                     let result = tokio::task::spawn_blocking({
                         let cfg = train_config.clone();
-                        move || finetune::run_lora_from_traces(&store, &cfg, &k8s_ref, AUTO_LORA_MIN_TRACES)
+                        move || {
+                            finetune::run_lora_from_traces(
+                                &store,
+                                &cfg,
+                                &k8s_ref,
+                                AUTO_LORA_MIN_TRACES,
+                            )
+                        }
                     })
                     .await;
                     if let Err(e) = result {
                         warn!(error = %e, "auto-LoRA task join failed");
                     }
                 } else {
-                    info!(count, min = AUTO_LORA_MIN_TRACES, "auto-LoRA poll: waiting for traces");
+                    info!(
+                        count,
+                        min = AUTO_LORA_MIN_TRACES,
+                        "auto-LoRA poll: waiting for traces"
+                    );
                 }
             }
             Err(e) => warn!(error = %e, "auto-LoRA poll: cannot open trace db"),
