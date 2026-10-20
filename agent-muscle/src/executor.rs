@@ -1,10 +1,13 @@
 use anyhow::Result;
 use serde::Serialize;
 use std::path::Path;
+use std::time::Duration;
 use tokio::process::Command;
 
 use crate::ast_guard::validate_bash;
 use crate::output_slicer::{compress_output, DEFAULT_MAX_OUTPUT_LINES};
+
+const DEFAULT_TIMEOUT_SECS: u64 = 60;
 
 #[derive(Debug, Serialize)]
 pub struct ExecResult {
@@ -19,7 +22,7 @@ pub struct ExecResult {
 
 pub async fn run_command(cmd: &str, cwd: Option<&Path>) -> Result<ExecResult> {
     validate_bash(cmd).map_err(|e| anyhow::anyhow!("{e}"))?;
-    exec_shell(cmd, cwd).await
+    exec_shell(cmd, cwd, Duration::from_secs(DEFAULT_TIMEOUT_SECS)).await
 }
 
 pub async fn run_python(code: &str) -> Result<ExecResult> {
@@ -48,23 +51,26 @@ pub async fn run_python(code: &str) -> Result<ExecResult> {
     })
 }
 
-async fn exec_shell(cmd: &str, cwd: Option<&Path>) -> Result<ExecResult> {
+async fn exec_shell(cmd: &str, cwd: Option<&Path>, timeout: Duration) -> Result<ExecResult> {
     let job_id = uuid::Uuid::new_v4().to_string();
     let start = std::time::Instant::now();
 
-    let output = if cfg!(target_os = "windows") {
-        Command::new("cmd")
-            .args(["/C", cmd])
-            .current_dir(cwd.unwrap_or(Path::new(".")))
-            .output()
-            .await?
+    let mut command = if cfg!(target_os = "windows") {
+        let mut command = Command::new("cmd");
+        command.args(["/C", cmd]);
+        command
     } else {
-        Command::new("sh")
-            .args(["-c", cmd])
-            .current_dir(cwd.unwrap_or(Path::new(".")))
-            .output()
-            .await?
+        let mut command = Command::new("sh");
+        command.args(["-c", cmd]);
+        command
     };
+    command
+        .current_dir(cwd.unwrap_or(Path::new(".")))
+        .kill_on_drop(true);
+
+    let output = tokio::time::timeout(timeout, command.output())
+        .await
+        .map_err(|_| anyhow::anyhow!("command timed out after {}s", timeout.as_secs()))??;
 
     let duration_ms = start.elapsed().as_millis() as u64;
     let exit_code = output.status.code().unwrap_or(-1);
@@ -103,6 +109,13 @@ mod tests {
         let res = run_command("echo \"unclosed quote", None).await;
         assert!(res.is_err());
         assert!(res.unwrap_err().to_string().contains("AST syntax error"));
+    }
+
+    #[tokio::test]
+    async fn exec_shell_kills_command_that_exceeds_timeout() {
+        let res = exec_shell("sleep 5", None, Duration::from_millis(200)).await;
+        assert!(res.is_err());
+        assert!(res.unwrap_err().to_string().contains("timed out"));
     }
 
     #[tokio::test]
