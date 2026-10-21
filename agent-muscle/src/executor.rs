@@ -5,6 +5,7 @@ use std::time::Duration;
 use tokio::process::Command;
 
 use crate::ast_guard::validate_bash;
+use crate::outcome_report::{self, OutcomeReport};
 use crate::output_slicer::{compress_output, DEFAULT_MAX_OUTPUT_LINES};
 
 const DEFAULT_TIMEOUT_SECS: u64 = 60;
@@ -21,8 +22,48 @@ pub struct ExecResult {
 }
 
 pub async fn run_command(cmd: &str, cwd: Option<&Path>) -> Result<ExecResult> {
-    validate_bash(cmd).map_err(|e| anyhow::anyhow!("{e}"))?;
-    exec_shell(cmd, cwd, Duration::from_secs(DEFAULT_TIMEOUT_SECS)).await
+    let started = std::time::Instant::now();
+    if let Err(err) = validate_bash(cmd) {
+        let job_id = uuid::Uuid::new_v4().to_string();
+        report_outcome(&job_id, "bash_guard", false, None, started).await;
+        return Err(anyhow::anyhow!("{err}"));
+    }
+    let outcome = exec_shell(cmd, cwd, Duration::from_secs(DEFAULT_TIMEOUT_SECS)).await;
+    match &outcome {
+        Ok(res) => {
+            report_outcome(
+                &res.job_id,
+                "bash",
+                res.success,
+                Some(res.exit_code),
+                started,
+            )
+            .await
+        }
+        Err(_) => {
+            let job_id = uuid::Uuid::new_v4().to_string();
+            report_outcome(&job_id, "bash", false, None, started).await;
+        }
+    }
+    outcome
+}
+
+async fn report_outcome(
+    job_id: &str,
+    kind: &'static str,
+    success: bool,
+    exit_code: Option<i32>,
+    started: std::time::Instant,
+) {
+    outcome_report::report(&OutcomeReport {
+        id: job_id,
+        organ: "agent-muscle",
+        kind,
+        success,
+        exit_code,
+        duration_ms: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
+    })
+    .await;
 }
 
 pub async fn run_python(code: &str) -> Result<ExecResult> {
