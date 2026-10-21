@@ -9,6 +9,7 @@ pub mod log;
 pub mod lora_hot_swap;
 pub mod manifest;
 pub mod mcp_server;
+pub mod outcome_report;
 pub mod output_slicer;
 pub mod preference_pairs;
 pub mod serve;
