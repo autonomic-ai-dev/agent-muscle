@@ -2,6 +2,9 @@
 commands = [
   "cargo test",
   "cargo check",
+  "sh .verify/checks/require_tests.sh ast_guard",
+  "sh .verify/checks/require_tests.sh output_slicer",
+  "sh .verify/checks/require_tests.sh --test jetstream_consumer_tests",
   "cargo clippy",
   "agent-muscle run",
   ".verify/",
