@@ -4,11 +4,11 @@ version = 4
 
 [[package]]
 name = "agent-body-core"
-version = "1.0.0-beta.3.11"
-source = "git+https://github.com/autonomic-ai-dev/agent-body?tag=v1.0.0-beta.3.11#7946a4ac4c74e4bd10c19184734e5b1278d07eb2"
+version = "1.0.0-rc1"
+source = "git+https://github.com/autonomic-ai-dev/agent-body?tag=v1.0.0-rc1#1e741844c77db806edadbe24c80e15bec1bdb917"
 dependencies = [
  "anyhow",
- "async-nats",
+ "async-nats 0.47.0",
  "dirs",
  "semver",
  "serde",
@@ -23,11 +23,11 @@ dependencies = [
 
 [[package]]
 name = "agent-muscle"
-version = "1.0.0-beta.3.9"
+version = "1.0.0-rc1"
 dependencies = [
  "agent-body-core",
  "anyhow",
- "async-nats",
+ "async-nats 0.39.0",
  "axum",
  "candle-core",
  "chrono",
@@ -161,7 +161,7 @@ dependencies = [
  "rand 0.8.6",
  "regex",
  "ring",
- "rustls-native-certs",
+ "rustls-native-certs 0.7.3",
  "rustls-pemfile",
  "rustls-webpki 0.102.8",
  "serde",
@@ -172,6 +172,42 @@ dependencies = [
  "time",
  "tokio",
  "tokio-rustls",
+ "tokio-util",
+ "tokio-websockets",
+ "tracing",
+ "tryhard",
+ "url",
+]
+
+[[package]]
+name = "async-nats"
+version = "0.47.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07d6f157065c3461096d51aacde0c326fa49f3f6e0199e204c566842cdaa5299"
+dependencies = [
+ "base64",
+ "bytes",
+ "futures-util",
+ "memchr",
+ "nkeys",
+ "nuid",
+ "pin-project",
+ "portable-atomic",
+ "rand 0.8.6",
+ "regex",
+ "ring",
+ "rustls-native-certs 0.8.5",
+ "rustls-pki-types",
+ "rustls-webpki 0.103.13",
+ "serde",
+ "serde_json",
+ "serde_nanos",
+ "serde_repr",
+ "thiserror 1.0.69",
+ "time",
+ "tokio",
+ "tokio-rustls",
+ "tokio-stream",
  "tokio-util",
  "tokio-websockets",
  "tracing",
@@ -2425,6 +2461,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustls-native-certs"
+version = "0.8.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a073f5dc7469f984c52ad2752b63b0807745133b6de880b7b64c1ac4c48aec4"
+dependencies = [
+ "openssl-probe 0.2.1",
+ "rustls-pki-types",
+ "schannel",
+ "security-framework 3.7.0",
+]
+
+[[package]]
 name = "rustls-pemfile"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3055,6 +3103,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1729aa945f29d91ba541258c8df89027d5792d85a8841fb65e8bf0f4ede4ef61"
 dependencies = [
  "rustls",
+ "tokio",
+]
+
+[[package]]
+name = "tokio-stream"
+version = "0.1.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3d06f0b082ba57c26b79407372e57cf2a1e28124f78e9479fe80322cf53420b"
+dependencies = [
+ "futures-core",
+ "pin-project-lite",
  "tokio",
 ]
 
