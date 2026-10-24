@@ -66,32 +66,6 @@ async fn report_outcome(
     .await;
 }
 
-pub async fn run_python(code: &str) -> Result<ExecResult> {
-    let job_id = uuid::Uuid::new_v4().to_string();
-    let start = std::time::Instant::now();
-
-    let output = Command::new("python3").args(["-c", code]).output().await?;
-
-    let duration_ms = start.elapsed().as_millis() as u64;
-    let exit_code = output.status.code().unwrap_or(-1);
-
-    let raw_stdout = String::from_utf8_lossy(&output.stdout).to_string();
-    let raw_stderr = String::from_utf8_lossy(&output.stderr).to_string();
-
-    let stdout = compress_output(&raw_stdout, exit_code, DEFAULT_MAX_OUTPUT_LINES);
-    let stderr = compress_output(&raw_stderr, exit_code, DEFAULT_MAX_OUTPUT_LINES);
-
-    Ok(ExecResult {
-        job_id,
-        command: format!("python3 -c {}", code.len()),
-        exit_code,
-        stdout,
-        stderr,
-        duration_ms,
-        success: output.status.success(),
-    })
-}
-
 async fn exec_shell(cmd: &str, cwd: Option<&Path>, timeout: Duration) -> Result<ExecResult> {
     let job_id = uuid::Uuid::new_v4().to_string();
     let start = std::time::Instant::now();
