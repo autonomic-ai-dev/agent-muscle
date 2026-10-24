@@ -8,7 +8,7 @@ use serde::Deserialize;
 use std::path::PathBuf;
 
 use crate::config::Config;
-use crate::executor::{run_command, run_python};
+use crate::executor::run_command;
 use crate::finetune::TrainBackend;
 use crate::train::{run_training, TrainConfig};
 
@@ -39,11 +39,6 @@ impl MuscleMcp {
 struct ExecuteParams {
     command: String,
     cwd: Option<String>,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-struct PythonParams {
-    code: String,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -115,22 +110,6 @@ impl MuscleMcp {
         }
     }
 
-    #[tool(description = "Run a Python snippet in an isolated interpreter")]
-    async fn muscle_execute_python(
-        &self,
-        params: Parameters<PythonParams>,
-    ) -> Result<CallToolResult, McpError> {
-        let p = params.0;
-        match run_python(&p.code).await {
-            Ok(result) => {
-                let text =
-                    serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string());
-                Ok(CallToolResult::success(vec![Content::text(text)]))
-            }
-            Err(e) => Err(McpError::invalid_params(format!("{e}"), None)),
-        }
-    }
-
     #[tool(description = "Trigger a local LoRA fine-tuning job on Apple MLX or Candle")]
     async fn muscle_finetune(
         &self,
@@ -177,7 +156,7 @@ impl ServerHandler for MuscleMcp {
     fn get_info(&self) -> ServerInfo {
         let mut info = ServerInfo::default();
         info.instructions = Some(
-            "Agent-Muscle MCP Server. Tools: muscle_execute_bash (shell commands), muscle_execute_python (Python snippets), muscle_finetune (MLX/Candle LoRA)."
+            "Agent-Muscle MCP Server. Tools: muscle_execute_bash (shell commands), muscle_finetune (MLX/Candle LoRA)."
                 .into(),
         );
         info.capabilities = ServerCapabilities::builder().enable_tools().build();
