@@ -36,6 +36,18 @@ Summary: agent-muscle records every command execution as a trace, turns those tr
   - Behaviour: `run_compute_consumer(url)` (`src/jetstream_consumer.rs` line 52) consumes a `ComputeJob` from `autonomic.compute.job` and publishes a `ComputeResult` to `autonomic.compute.result`.
   - Outcome: The job runs through the guarded executor and its result is published. Covered by `tests/jetstream_consumer_tests.rs`, which starts a real `nats-server` with JetStream, checks the echoed output, and stops the server. Recorded through `require_tests.sh --test jetstream_consumer_tests`.
 
+## Code
+
+- `agent-muscle/src/ast_guard.rs`
+- `agent-muscle/src/executor.rs`
+- `agent-muscle/src/jetstream_consumer.rs`
+- `agent-muscle/src/lora_hot_swap.rs`
+- `agent-muscle/src/outcome_report.rs`
+- `agent-muscle/src/output_slicer.rs`
+- `agent-muscle/src/preference_pairs.rs`
+- `agent-muscle/src/trace_collector.rs`
+- `agent-muscle/tests/jetstream_consumer_tests.rs`
+
 ## How to get to it (user POV)
 
 - CLI: `agent-muscle run <cmd>` runs the executor, which applies the AST guard. `agent-muscle train` starts training from the trace store.
