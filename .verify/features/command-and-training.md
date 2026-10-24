@@ -43,6 +43,7 @@ Summary: agent-muscle runs sandboxed shell and Python commands and returns JSON 
 - `agent-muscle/Cargo.toml`
 
 ## How to get to it (user POV)
+- Run guard: `ast_guard::validate_bash` delegates to `agent_body_core::guard::inspect`. The rules are in the `command-policy` feature map in agent-body.
 
 - CLI: `agent-muscle run`, `validate`, `train`, `operator`, `k8s render-job`, `status`, `serve`, `serve-mcp`
 - HTTP: `GET /health`, `POST /execute`, `POST /train/validate`, `POST /train/run`, `GET /k8s/status`, `POST /k8s/sync`

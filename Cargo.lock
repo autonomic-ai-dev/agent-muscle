@@ -4,8 +4,8 @@ version = 4
 
 [[package]]
 name = "agent-body-core"
-version = "1.0.0-beta.3"
-source = "git+https://github.com/autonomic-ai-dev/agent-body?tag=v1.0.0-beta.3#359339f792293cd33b8ef273d410892c2c75bc58"
+version = "1.0.0-beta.3.11"
+source = "git+https://github.com/autonomic-ai-dev/agent-body?tag=v1.0.0-beta.3.11#7946a4ac4c74e4bd10c19184734e5b1278d07eb2"
 dependencies = [
  "anyhow",
  "async-nats",
@@ -16,6 +16,8 @@ dependencies = [
  "serde_yaml",
  "thiserror 2.0.18",
  "toml",
+ "tree-sitter",
+ "tree-sitter-bash",
  "uuid",
 ]
 
@@ -43,8 +45,6 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
- "tree-sitter",
- "tree-sitter-bash",
  "uuid",
 ]
 
