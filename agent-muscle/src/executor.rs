@@ -166,6 +166,6 @@ mod tests {
         assert!(res
             .unwrap_err()
             .to_string()
-            .contains("Destructive command blocked"));
+            .contains("Command blocked by AST safety guard"));
     }
 }
