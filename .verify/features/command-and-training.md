@@ -25,6 +25,23 @@ Summary: agent-muscle runs sandboxed shell and Python commands and returns JSON 
   - Behaviour: `agent-muscle serve` runs the HTTP API and a JetStream compute consumer.
   - Outcome: A queued request is executed and its result published.
 
+## Code
+
+- `agent-muscle/src/config.rs`
+- `agent-muscle/src/dataset.rs`
+- `agent-muscle/src/finetune`
+- `agent-muscle/src/k8s`
+- `agent-muscle/src/lib.rs`
+- `agent-muscle/src/log.rs`
+- `agent-muscle/src/main.rs`
+- `agent-muscle/src/manifest.rs`
+- `agent-muscle/src/mcp_server.rs`
+- `agent-muscle/src/serve.rs`
+- `agent-muscle/src/spine.rs`
+- `agent-muscle/src/train.rs`
+- `agent-muscle/src/update.rs`
+- `agent-muscle/Cargo.toml`
+
 ## How to get to it (user POV)
 
 - CLI: `agent-muscle run`, `validate`, `train`, `operator`, `k8s render-job`, `status`, `serve`, `serve-mcp`

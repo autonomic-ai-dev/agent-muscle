@@ -142,6 +142,8 @@ Global `--progress` (or `AGENT_PROGRESS=1`) enables structured ProgressTree CLI 
 | `POST` | `/execute` | Run a command |
 | `POST` | `/train/validate` | Validate a training dataset |
 | `POST` | `/train/run` | Start a training pipeline |
+| `GET` | `/k8s/status` | GPU operator status from the Kubernetes cluster |
+| `POST` | `/k8s/sync` | Sync GPU training jobs to the Kubernetes operator |
 | `GET` | `/k8s/status` | K8s operator status |
 | `POST` | `/k8s/sync` | Sync GPU job queue |
 
