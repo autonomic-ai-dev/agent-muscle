@@ -34,7 +34,7 @@ pub async fn report(report: &OutcomeReport<'_>) {
     let base_url =
         std::env::var("AUTONOMIC_HEART_URL").unwrap_or_else(|_| DEFAULT_HEART_URL.to_string());
     if let Err(err) = report_to(&base_url, report).await {
-        tracing::debug!(error = %err, "outcome not reported to agent-heart");
+        tracing::warn!(error = %err, "outcome not reported to agent-heart");
     }
 }
 
@@ -83,6 +83,24 @@ mod tests {
             listener.local_addr().unwrap().port()
         };
         let base = format!("http://127.0.0.1:{port}");
+        assert!(report_to(&base, &sample()).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn heart_error_status_is_reported_as_an_error() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut buf = vec![0u8; 4096];
+            let _ = socket.read(&mut buf).await.unwrap();
+            socket
+                .write_all(
+                    b"HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                )
+                .await
+                .unwrap();
+        });
         assert!(report_to(&base, &sample()).await.is_err());
     }
 }

@@ -11,7 +11,7 @@ agent-muscle records each command execution as a trace, turns traces into prefer
 3. **Auto-LoRA poll.** `run_auto_lora_poll` checks the trace store periodically, and starts training when enough data exists.
 4. **Preference pairs.** `export_preference_pairs` (`src/preference_pairs.rs`) returns chosen and rejected pairs, up to a limit.
 5. **Adapter registry.** `LoraAdapterRegistry` (`src/lora_hot_swap.rs`) tracks the adapters that can be swapped.
-6. **Outcome report.** `report_to` posts an `OutcomeReport` to agent-heart's `POST /outcomes/record`. A failed post should not stop the caller.
+6. **Outcome report.** `report_to` posts an `OutcomeReport` to agent-heart's `POST /outcomes/record`. A failed post, including heart answering HTTP 500, is returned as an error and logged at warn level. It does not stop the caller.
 7. **Output compression.** `compress_output` keeps at most `max_lines` lines and preserves the exit code.
 8. **AST guard.** `validate_bash` (`src/ast_guard.rs`) rejects destructive commands before the executor runs them. It also checks script files.
 9. **Compute consumer.** `run_compute_consumer` takes `ComputeJob` messages from `autonomic.compute.job`, runs them through the guarded executor, and publishes `ComputeResult` to `autonomic.compute.result`.
