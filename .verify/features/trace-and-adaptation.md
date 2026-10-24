@@ -23,7 +23,7 @@ Summary: agent-muscle records every command execution as a trace, turns those tr
 - `outcome-report`: Sends one execution outcome to agent-heart.
   - Intent: Feed the self-learning critic in agent-heart.
   - Behaviour: `report_to(base_url, report)` (`src/outcome_report.rs` line 21) posts an `OutcomeReport` (line 12). `report` (line 33) wraps `report_to`. The base URL it uses was not read in this pass.
-  - Outcome: The POST is sent. Covered by 3 inline tests, including a heart HTTP 500 reported as an error. A failed post is logged at warn level, so it is visible, and the caller still continues.
+  - Outcome: The POST is sent. Covered by 2 inline tests. Whether the receiving route in agent-heart (`POST /outcomes/record`) accepts the payload is not verified in this pass.
 - `output-compression`: Shortens long command output before it is returned.
   - Intent: Keep large logs from overwhelming a caller's context.
   - Behaviour: `compress_output(raw, exit_code, max_lines)` (`src/output_slicer.rs` line 7).
