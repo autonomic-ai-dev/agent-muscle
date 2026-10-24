@@ -1,6 +1,6 @@
 [package]
 name = "agent-muscle"
-version = "1.0.0-beta.3.9"
+version = "1.0.0-rc1"
 edition = "2021"
 
 [features]
@@ -8,9 +8,9 @@ default = []
 candle = ["dep:candle-core"]
 
 [dependencies]
-agent-body-core = { git = "https://github.com/autonomic-ai-dev/agent-body", tag = "v1.0.0-beta.3.11", features = ["nats"] }
+agent-body-core = { git = "https://github.com/autonomic-ai-dev/agent-body", tag = "v1.0.0-rc1", features = ["nats"] }
 anyhow = "1"
-async-nats = "0.39"
+async-nats = "0.47"
 axum = "0.7"
 chrono = "0.4"
 clap = { version = "4", features = ["derive"] }
