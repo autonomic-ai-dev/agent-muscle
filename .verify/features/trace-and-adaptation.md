@@ -36,6 +36,18 @@ Summary: agent-muscle records every command execution as a trace, turns those tr
   - Behaviour: `run_compute_consumer(url)` (`src/jetstream_consumer.rs` line 52) consumes a `ComputeJob` from `autonomic.compute.job` and publishes a `ComputeResult` to `autonomic.compute.result`.
   - Outcome: The job runs through the guarded executor and its result is published. Covered by `tests/jetstream_consumer_tests.rs`, which starts a real `nats-server` with JetStream, checks the echoed output, and stops the server. Recorded through `require_tests.sh --test jetstream_consumer_tests`.
 
+## Code
+
+- `agent-muscle/src/ast_guard.rs`
+- `agent-muscle/src/executor.rs`
+- `agent-muscle/src/jetstream_consumer.rs`
+- `agent-muscle/src/lora_hot_swap.rs`
+- `agent-muscle/src/outcome_report.rs`
+- `agent-muscle/src/output_slicer.rs`
+- `agent-muscle/src/preference_pairs.rs`
+- `agent-muscle/src/trace_collector.rs`
+- `agent-muscle/tests/jetstream_consumer_tests.rs`
+
 ## How to get to it (user POV)
 
 - CLI: `agent-muscle run <cmd>` runs the executor, which applies the AST guard. `agent-muscle train` starts training from the trace store.
@@ -46,7 +58,7 @@ Summary: agent-muscle records every command execution as a trace, turns those tr
 
 - **Unit Tests:** `cargo test` (whole crate, 43 tests in the baseline). The guarded filters: `sh .verify/checks/require_tests.sh ast_guard` and `sh .verify/checks/require_tests.sh output_slicer`. Each fails on zero matched tests.
 - **Functional API Tests (Hurl):** not written.
-- **Allowlisted Verification:** entries in `.verify/verify.toml`
+- **Allowlisted Verification:** entries in `.verify/verify.toml`, including `bash .verify/checks/route_drift.sh`, which checks the README route table against source.
 - **Preconditions:** Rust toolchain. `auto-lora-poll` and training need the k8s and GPU setup described in `command-and-training.md`.
 
 ### Verification Steps
@@ -65,7 +77,7 @@ Summary: agent-muscle records every command execution as a trace, turns those tr
 ## Gotchas
 
 - Duplicate guard: agent-mouth has its own AST gate (its crate has 36 passing tests in total), and this crate has a separate `ast_guard.rs` with 14 inline tests. The two policies are maintained separately and can drift. Any rule added to one must be added to the other, with a test in each. Consider a shared policy crate.
-- Defect: `connect_js(_url)` in `jetstream_consumer.rs` ignores its `url` argument. It connects through `agent_body_core::connect_nats`, which reads `AUTONOMIC_NATS_URL`. The test sets that variable, so it passes, but a caller that passes a different URL is silently sent to the environment's broker. Fix this before any multi-broker deployment.
+- Fixed (2026-10-24): `connect_js(url)` in `jetstream_consumer.rs` connects to the URL it is given, through `connect_nats_at`. That helper applies the `AUTONOMIC_NATS_*` auth and TLS settings. The test points `AUTONOMIC_NATS_URL` at a dead port, so only the URL argument can reach the broker. Before, a caller that passed a different URL was silently sent to the environment's broker.
 - Gap: `auto-lora-poll`'s trigger threshold is not checked by any test in this pass.
 - `outcome_report` posts to agent-heart. If heart is down, the report fails. Confirm the caller treats that as non-fatal before relying on it.
 - The graph lists a `gpu_job` module, but no `gpu_job.rs` exists under `src/`. The GPU operator is referenced as `crate::k8s::operator` in `serve.rs`. It is not mapped by any contract yet.
