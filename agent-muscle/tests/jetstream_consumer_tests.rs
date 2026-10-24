@@ -69,7 +69,7 @@ async fn compute_job_is_executed_and_its_result_published() {
     wait_until_ready(&url).await;
 
     unsafe {
-        std::env::set_var("AUTONOMIC_NATS_URL", &url);
+        std::env::set_var("AUTONOMIC_NATS_URL", "nats://127.0.0.1:1");
     }
 
     let client = async_nats::connect(&url).await.unwrap();
@@ -85,9 +85,10 @@ async fn compute_job_is_executed_and_its_result_published() {
 
     let mut results = client.subscribe(subjects::COMPUTE_RESULT).await.unwrap();
 
-    let consumer = tokio::spawn(async move {
-        agent_muscle::jetstream_consumer::run_compute_consumer(&url).await
-    });
+    let consumer =
+        tokio::spawn(
+            async move { agent_muscle::jetstream_consumer::run_compute_consumer(&url).await },
+        );
 
     let job = ComputeJob {
         msg_id: "job-1".into(),
